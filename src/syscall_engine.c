@@ -10,6 +10,9 @@
 #include <sys/syscall.h>
 
 #include "log.h"
+#include "utils.h"
+
+#include "syscall/newstatat.h"
 
 long syscall_engine(
     pid_t pid,
@@ -27,28 +30,7 @@ long syscall_engine(
             if(rdi == 1) {
                 char buf[4096];
 
-                size_t len = rdx < sizeof(buf) - 1
-                           ? (size_t)rdx
-                           : sizeof(buf) - 1;
-
-                struct iovec local = {
-                    .iov_base = buf,
-                    .iov_len = len
-                };
-
-                struct iovec remote = {
-                    .iov_base = (void *)(uintptr_t)rsi,
-                    .iov_len = len
-                };
-
-                ssize_t n = process_vm_readv(
-                    pid, &local, 1, &remote, 1, 0
-                );
-
-                //if (n < 0) {
-                //    perror("process_vm_readv");
-                //    return -errno;
-                //}
+                size_t n = getbuf(buf,sizeof(buf),rdx,pid);
 
                 // Nicht voraussetzen, dass der Puffer nullterminiert ist.
                 fwrite(buf, 1, (size_t)n, stdout);
@@ -71,31 +53,19 @@ long syscall_engine(
         case SYS_getegid:
             return 1000;
 
-        case SYS_fstat:
         case SYS_newfstatat:
-            // Cannot safely report success without filling
-            // the tracee's struct stat.
-            return -ENOSYS;
+            char user_path[4096];
 
-        case SYS_read:
-        case SYS_open:
-        case SYS_openat:
-        case SYS_close:
-        case SYS_mmap:
-        case SYS_mprotect:
-        case SYS_munmap:
-        case SYS_brk:
-        case SYS_ioctl:
-        case SYS_futex:
-        case SYS_getrandom:
-        case SYS_execve:
-        case SYS_exit:
-        case SYS_exit_group:
-            // Not implemented by this emulation engine.
-            return -ENOSYS;
+            size_t n = getbuf(user_path,sizeof(user_path),rsi,pid);
+
+            return sys_newfstatat(
+                (int)rdi,
+                user_path,
+                NULL,
+                (int)r10
+            );
 
         default:
-            // Every unknown syscall is handled here as well.
             return -ENOSYS;
     }
 }
