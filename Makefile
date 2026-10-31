@@ -1,6 +1,12 @@
+CC = gcc
+CFLAGS = -Wall -Wextra -g -DENABLE_LOG
+SRC = $(wildcard src/*.c src/syscall/*.c)
+
 all:
-	gcc src/*.c -o runner -g -DENABLE_LOG
+	$(CC) $(CFLAGS) $(SRC) -o runner
 
 run:
 	./runner initramfs
 
+clean:
+	rm -f runner
