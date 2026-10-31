@@ -6,7 +6,7 @@ all:
 	$(CC) $(CFLAGS) $(SRC) -o runner
 
 run:
-	./runner initramfs
+	./runner initramfs/init
 
 clean:
 	rm -f runner
